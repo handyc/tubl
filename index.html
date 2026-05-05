@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUBL — Tube Based Solution</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  color: #e0e0e0;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+#tube-bg {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+}
+.container {
+  position: relative; z-index: 1;
+  max-width: 900px; margin: 0 auto; padding: 20px;
+}
+h1 {
+  text-align: center; font-size: 3em;
+  background: linear-gradient(90deg, #ff0040, #ff8800, #ffff00, #00ff40, #0088ff, #8800ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 5px; text-transform: uppercase; letter-spacing: 8px;
+}
+.subtitle { text-align: center; color: #888; margin-bottom: 20px; font-size: 0.9em; }
+.tabs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 15px; justify-content: center;
+}
+.tab {
+  padding: 8px 16px; border: 2px solid #333; border-radius: 6px;
+  cursor: pointer; font-family: 'Courier New', monospace; font-size: 0.85em;
+  background: #1a1a2e; color: #aaa; transition: all 0.2s;
+}
+.tab:hover { border-color: #666; color: #fff; }
+.tab.active { border-color: #00ff40; color: #00ff40; background: #0a2a0a; }
+.panel {
+  display: none; background: #111122; border: 2px solid #333;
+  border-radius: 8px; padding: 20px; min-height: 400px;
+}
+.panel.active { display: block; }
+/* 16 Color GUI */
+.color-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin: 15px 0;
+}
+.color-swatch {
+  width: 100%; aspect-ratio: 1; border-radius: 6px; border: 2px solid #444;
+  cursor: pointer; transition: transform 0.2s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+#gui-canvas {
+  width: 100%; border: 2px solid #444; border-radius: 6px;
+  background: #000; cursor: crosshair; display: block;
+}
+.controls { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.controls label { font-size: 0.85em; color: #888; }
+.controls select, .controls button {
+  background: #1a1a2e; color: #ddd; border: 1px solid #444;
+  padding: 4px 10px; border-radius: 4px; font-family: 'Courier New', monospace;
+}
+.controls button:hover { background: #2a2a4e; }
+/* Tetris */
+#tetris-wrapper { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+#tetris-canvas { border: 2px solid #00ff40; background: #000; }
+.tetris-side { text-align: center; }
+.tetris-side .score { font-size: 1.5em; color: #00ff40; margin: 10px 0; }
+.tetris-side .next-label { color: #888; font-size: 0.85em; }
+#next-canvas { border: 1px solid #333; background: #000; margin-top: 5px; }
+.tetris-btns { margin-top: 15px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.tetris-btns button {
+  width: 50px; height: 50px; font-size: 1.5em; background: #1a1a2e;
+  color: #00ff40; border: 1px solid #333; border-radius: 6px; cursor: pointer;
+  font-family: 'Courier New', monospace;
+}
+.tetris-btns button:hover { background: #2a2a4e; }
+.tetris-btns .wide { width: 110px; }
+/* Soundtrack */
+.tracklist { list-style: none; }
+.tracklist li {
+  padding: 10px 15px; margin: 4px 0; background: #1a1a2e; border-radius: 6px;
+  cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid transparent; transition: all 0.2s;
+}
+.tracklist li:hover { border-color: #00ff40; }
+.tracklist li.playing { border-color: #ff0040; background: #2a0a1a; }
+.tracklist .track-info { display: flex; flex-direction: column; }
+.tracklist .track-title { color: #fff; font-weight: bold; }
+.tracklist .track-artist { color: #888; font-size: 0.8em; }
+.tracklist .track-album { color: #555; font-size: 0.75em; }
+.tracklist .track-num { color: #555; font-size: 0.85em; min-width: 30px; }
+.waveform {
+  height: 60px; background: #0a0a1a; border-radius: 6px; margin: 15px 0;
+  border: 1px solid #333; overflow: hidden; position: relative;
+}
+.waveform-bar {
+  position: absolute; bottom: 0; width: 3px; background: #00ff40;
+  transition: height 0.1s; border-radius: 2px 2px 0 0;
+}
+/* Toilet Time */
+.toilet-timer {
+  text-align: center; padding: 30px;
+}
+.toilet-timer .time {
+  font-size: 5em; color: #ff8800; font-weight: bold;
+  text-shadow: 0 0 20px rgba(255,136,0,0.5);
+}
+.toilet-timer .status { font-size: 1.2em; color: #888; margin: 10px 0; }
+.toilet-timer .tips { font-size: 0.85em; color: #555; margin-top: 20px; }
+.toilet-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.toilet-btns button {
+  padding: 10px 25px; font-family: 'Courier New', monospace;
+  background: #1a1a2e; color: #ff8800; border: 2px solid #ff8800;
+  border-radius: 6px; cursor: pointer; font-size: 1em;
+}
+.toilet-btns button:hover { background: #ff8800; color: #000; }
+.toilet-log { margin-top: 20px; max-height: 150px; overflow-y: auto; }
+.toilet-log p { padding: 4px 0; border-bottom: 1px solid #1a1a2e; font-size: 0.8em; color: #666; }
+/* Trackpad info */
+.input-options { margin: 15px 0; }
+.input-option {
+  padding: 15px; margin: 8px 0; background: #1a1a2e; border-radius: 6px;
+  border-left: 4px solid; cursor: pointer; transition: all 0.2s;
+}
+.input-option:hover { background: #2a2a4e; }
+.input-option.selected { background: #0a2a0a; border-left-color: #00ff40; }
+.input-option h3 { margin-bottom: 5px; }
+.input-option p { font-size: 0.85em; color: #888; }
+.section-title { color: #00ff40; margin-bottom: 10px; font-size: 1.1em; }
+.footer { text-align: center; color: #333; margin-top: 30px; padding: 20px; font-size: 0.8em; }
+</style>
+</head>
+<body>
+
+<canvas id="tube-bg"></canvas>
+
+<div class="container">
+  <h1>TUBL</h1>
+  <p class="subtitle">Tube Based Solution — solving problems with tubes since 2025</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="gui">🎨 16-Color GUI</div>
+    <div class="tab" data-tab="input">🖱️ Input Mode</div>
+    <div class="tab" data-tab="soundtrack">🎵 Soundtrack</div>
+    <div class="tab" data-tab="tetris">🧱 Tetris</div>
+    <div class="tab" data-tab="toilet">🚽 Toilet Time</div>
+  </div>
+
+  <!-- 16 Color GUI -->
+  <div class="panel active" id="panel-gui">
+    <p class="section-title">Full 16-Color Tube-Powered Drawing Interface</p>
+    <div class="color-grid" id="color-grid"></div>
+    <canvas id="gui-canvas" width="800" height="400"></canvas>
+    <div class="controls">
+      <label>Brush:</label>
+      <select id="brush-size">
+        <option value="2">2px</option>
+        <option value="5" selected>5px</option>
+        <option value="10">10px</option>
+        <option value="20">20px</option>
+        <option value="40">40px</option>
+      </select>
+      <label>Tool:</label>
+      <select id="draw-tool">
+        <option value="brush">Brush</option>
+        <option value="line">Line</option>
+        <option value="rect">Rectangle</option>
+        <option value="circle">Circle</option>
+        <option value="fill">Tube Fill</option>
+      </select>
+      <button onclick="clearCanvas()">Clear</button>
+      <button onclick="saveCanvas()">Save</button>
+    </div>
+  </div>
+
+  <!-- Input Mode -->
+  <div class="panel" id="panel-input">
+    <p class="section-title">Tube Navigation Input Configuration</p>
+    <div class="input-options">
+      <div class="input-option selected" style="border-left-color:#00ff40" onclick="selectInput(this,'trackpad')">
+        <h3 style="color:#00ff40">🔗 Trackpad Mode</h3>
+        <p>Smooth tube-based trackpad navigation. Slide your finger across the tube surface for precise cursor movement. Multi-touch gesture support for zoom and rotate.</p>
+      </div>
+      <div class="input-option" style="border-left-color:#ff8800" onclick="selectInput(this,'trackball')">
+        <h3 style="color:#ff8800">🔮 Trackball Mode</h3>
+        <p>Classic tube-encased trackball control. Spin the ball inside the tube housing for fluid 360° navigation. Superior precision for tube-drawing applications.</p>
+      </div>
+      <div class="input-option" style="border-left-color:#0088ff" onclick="selectInput(this,'tube-pointer')">
+        <h3 style="color:#0088ff">🧪 Tube Pointer</h3>
+        <p>Revolutionary input method — physically point the tube at what you want. Built-in tube gyroscopes detect orientation with sub-tube accuracy.</p>
+      </div>
+      <div class="input-option" style="border-left-color:#ff0040" onclick="selectInput(this,'mind-tube')">
+        <h3 style="color:#ff0040">🧠 Mind Tube</h3>
+        <p>Think at the tube, the tube thinks back. Experimental neural-tube interface. Requires cranial tube adapter (sold separately).</p>
+      </div>
+    </div>
+    <p style="color:#555;font-size:0.8em;margin-top:15px">Current input: <span id="current-input" style="color:#00ff40">Trackpad</span> | Tube sensitivity: <span style="color:#ff8800">87%</span></p>
+  </div>
+
+  <!-- Soundtrack -->
+  <div class="panel" id="panel-soundtrack">
+    <p class="section-title">Tube-Enhanced Audio Experience</p>
+    <div class="waveform" id="waveform"></div>
+    <ul class="tracklist" id="tracklist">
+      <li onclick="playTrack(0)">
+        <span class="track-num">01</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Title Theme</span>
+          <span class="track-artist">Kenji Yamamoto, Manami Matsumae</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(1)">
+        <span class="track-num">02</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Mr. X Stage</span>
+          <span class="track-artist">Yasukuni Minamino</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(2)">
+        <span class="track-num">03</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Plant Man Stage</span>
+          <span class="track-artist">Yasukuni Minamino</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(3)">
+        <span class="track-num">04</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Flame Man Stage</span>
+          <span class="track-artist">Yasukuni Minamino</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(4)">
+        <span class="track-num">05</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Knight Man Stage</span>
+          <span class="track-artist">Yasukuni Minamino</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(5)">
+        <span class="track-num">06</span>
+        <div class="track-info">
+          <span class="track-title">Mega Man 6 — Ending Theme</span>
+          <span class="track-artist">Kenji Yamamoto</span>
+          <span class="track-album">Rockman 6 (NES, 1993)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(6)">
+        <span class="track-num">07</span>
+        <div class="track-info">
+          <span class="track-title">Immigrant Song</span>
+          <span class="track-artist">Led Zeppelin</span>
+          <span class="track-album">Led Zeppelin III (1970)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(7)">
+        <span class="track-num">08</span>
+        <div class="track-info">
+          <span class="track-title">Whole Lotta Love</span>
+          <span class="track-artist">Led Zeppelin</span>
+          <span class="track-album">Led Zeppelin II (1969)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(8)">
+        <span class="track-num">09</span>
+        <div class="track-info">
+          <span class="track-title">Kashmir</span>
+          <span class="track-artist">Led Zeppelin</span>
+          <span class="track-album">Physical Graffiti (1975)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(9)">
+        <span class="track-num">10</span>
+        <div class="track-info">
+          <span class="track-title">Stairway to Heaven</span>
+          <span class="track-artist">Led Zeppelin</span>
+          <span class="track-album">Led Zeppelin IV (1971)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(10)">
+        <span class="track-num">11</span>
+        <div class="track-info">
+          <span class="track-title">Black Dog</span>
+          <span class="track-artist">Led Zeppelin</span>
+          <span class="track-album">Led Zeppelin IV (1971)</span>
+        </div>
+      </li>
+      <li onclick="playTrack(11)">
+        <span class="track-num">12</span>
+        <div class="track-info">
+          <span class="track-title">Tetris Theme — Korobeiniki</span>
+          <span class="track-artist">Hirokazu Tanaka (NES arrangement)</span>
+          <span class="track-album">Tetris (NES, 1989)</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Tetris -->
+  <div class="panel" id="panel-tetris">
+    <p class="section-title">Tube-Powered Tetris</p>
+    <div id="tetris-wrapper">
+      <canvas id="tetris-canvas" width="250" height="500"></canvas>
+      <div class="tetris-side">
+        <div class="score" id="tetris-score">0</div>
+        <div class="next-label">NEXT</div>
+        <canvas id="next-canvas" width="100" height="100"></canvas>
+        <div class="tetris-btns">
+          <button onclick="tetrisMove(-1)">◀</button>
+          <button onclick="tetrisRotate()">↻</button>
+          <button onclick="tetrisMove(1)">▶</button>
+          <button class="wide" onclick="tetrisDrop()">▼</button>
+        </div>
+      </div>
+    </div>
+    <p style="color:#555;font-size:0.8em;text-align:center;margin-top:10px">Arrow keys to play | Click buttons for tube input</p>
+  </div>
+
+  <!-- Toilet Time -->
+  <div class="panel" id="panel-toilet">
+    <p class="section-title">🚽 Toilet Time — Tube Activity Tracker</p>
+    <div class="toilet-timer">
+      <div class="time" id="toilet-time">00:00</div>
+      <div class="status" id="toilet-status">Ready to tube</div>
+      <div class="toilet-btns">
+        <button onclick="startToilet()">Start</button>
+        <button onclick="stopToilet()">Stop</button>
+        <button onclick="resetToilet()">Reset</button>
+      </div>
+      <div class="tips" id="toilet-tips">
+        💡 Did you know? The average toilet break lasts 5-7 minutes. Scientists call this "productive tube time."
+      </div>
+    </div>
+    <div class="toilet-log" id="toilet-log"></div>
+  </div>
+
+  <div class="footer">
+    TUBL™ — Tube Based Solution v2.0 | "Every problem is just a tube away from being solved"<br>
+    Patent pending on tube-based GUI paradigm | © 2025 handyc industries
+  </div>
+</div>
+
+<script>
+// ─── Tube Background Animation ───
+const tubeBg = document.getElementById('tube-bg');
+const tbCtx = tubeBg.getContext('2d');
+let tubes = [];
+function initTubes() {
+  tubeBg.width = window.innerWidth;
+  tubeBg.height = window.innerHeight;
+  tubes = [];
+  for (let i = 0; i < 30; i++) {
+    tubes.push({
+      x: Math.random() * tubeBg.width,
+      y: Math.random() * tubeBg.height,
+      r: 3 + Math.random() * 15,
+      dx: (Math.random() - 0.5) * 0.5,
+      dy: (Math.random() - 0.5) * 0.5,
+      color: ['#ff004020','#ff880020','#ffff0020','#00ff4020','#0088ff20','#8800ff20','#ff00ff20'][Math.floor(Math.random()*7)]
+    });
+  }
+}
+function drawTubes() {
+  tbCtx.clearRect(0, 0, tubeBg.width, tubeBg.height);
+  tubes.forEach(t => {
+    t.x += t.dx; t.y += t.dy;
+    if (t.x < 0 || t.x > tubeBg.width) t.dx *= -1;
+    if (t.y < 0 || t.y > tubeBg.height) t.dy *= -1;
+    tbCtx.beginPath();
+    tbCtx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    tbCtx.strokeStyle = t.color;
+    tbCtx.lineWidth = 2;
+    tbCtx.stroke();
+  });
+  // Connect nearby tubes
+  for (let i = 0; i < tubes.length; i++) {
+    for (let j = i + 1; j < tubes.length; j++) {
+      const dx = tubes[i].x - tubes[j].x, dy = tubes[i].y - tubes[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 200) {
+        tbCtx.beginPath();
+        tbCtx.moveTo(tubes[i].x, tubes[i].y);
+        tbCtx.lineTo(tubes[j].x, tubes[j].y);
+        tbCtx.strokeStyle = `rgba(100,100,255,${0.05 * (1 - dist/200)})`;
+        tbCtx.lineWidth = 1;
+        tbCtx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawTubes);
+}
+window.addEventListener('resize', initTubes);
+initTubes(); drawTubes();
+
+// ─── Tabs ───
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── 16 Color GUI ───
+const TUBL16 = ['#000000','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff','#ffffff',
+                '#ff8800','#88ff00','#0088ff','#ff0088','#8800ff','#00ff88','#888888','#444444'];
+let selectedColor = '#00ff40';
+let guiCanvas, guiCtx, drawing = false, lastX, lastY;
+let shapeStart = null, canvasSnapshot = null;
+
+function initGUI() {
+  guiCanvas = document.getElementById('gui-canvas');
+  guiCtx = guiCanvas.getContext('2d');
+  const grid = document.getElementById('color-grid');
+  TUBL16.forEach((c, i) => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch';
+    s.style.background = c;
+    s.onclick = () => {
+      document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+      selectedColor = c;
+    };
+    if (c === selectedColor) s.classList.add('selected');
+    grid.appendChild(s);
+  });
+  guiCanvas.addEventListener('mousedown', e => {
+    drawing = true;
+    const r = guiCanvas.getBoundingClientRect();
+    const sx = (e.clientX - r.left) * (guiCanvas.width / r.width);
+    const sy = (e.clientY - r.top) * (guiCanvas.height / r.height);
+    const tool = document.getElementById('draw-tool').value;
+    if (tool === 'line' || tool === 'rect' || tool === 'circle') {
+      shapeStart = { x: sx, y: sy };
+      canvasSnapshot = guiCtx.getImageData(0, 0, guiCanvas.width, guiCanvas.height);
+    } else if (tool === 'fill') {
+      floodFill(Math.round(sx), Math.round(sy), selectedColor);
+    } else {
+      lastX = sx; lastY = sy;
+    }
+  });
+  guiCanvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const r = guiCanvas.getBoundingClientRect();
+    const sx = (e.clientX - r.left) * (guiCanvas.width / r.width);
+    const sy = (e.clientY - r.top) * (guiCanvas.height / r.height);
+    const tool = document.getElementById('draw-tool').value;
+    const size = parseInt(document.getElementById('brush-size').value);
+    if (tool === 'brush') {
+      guiCtx.beginPath(); guiCtx.moveTo(lastX, lastY); guiCtx.lineTo(sx, sy);
+      guiCtx.strokeStyle = selectedColor; guiCtx.lineWidth = size;
+      guiCtx.lineCap = 'round'; guiCtx.stroke();
+      lastX = sx; lastY = sy;
+    } else if (tool === 'line' && shapeStart) {
+      guiCtx.putImageData(canvasSnapshot, 0, 0);
+      guiCtx.beginPath(); guiCtx.moveTo(shapeStart.x, shapeStart.y); guiCtx.lineTo(sx, sy);
+      guiCtx.strokeStyle = selectedColor; guiCtx.lineWidth = size; guiCtx.stroke();
+    } else if (tool === 'rect' && shapeStart) {
+      guiCtx.putImageData(canvasSnapshot, 0, 0);
+      guiCtx.strokeStyle = selectedColor; guiCtx.lineWidth = size;
+      guiCtx.strokeRect(shapeStart.x, shapeStart.y, sx - shapeStart.x, sy - shapeStart.y);
+    } else if (tool === 'circle' && shapeStart) {
+      guiCtx.putImageData(canvasSnapshot, 0, 0);
+      const rx = Math.abs(sx - shapeStart.x) / 2, ry = Math.abs(sy - shapeStart.y) / 2;
+      const cx = shapeStart.x + (sx - shapeStart.x) / 2, cy = shapeStart.y + (sy - shapeStart.y) / 2;
+      guiCtx.beginPath(); guiCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      guiCtx.strokeStyle = selectedColor; guiCtx.lineWidth = size; guiCtx.stroke();
+    }
+  });
+  guiCanvas.addEventListener('mouseup', () => { drawing = false; shapeStart = null; });
+  guiCanvas.addEventListener('mouseleave', () => { drawing = false; shapeStart = null; });
+}
+
+function floodFill(x, y, fillColor) {
+  const img = guiCtx.getImageData(0, 0, guiCanvas.width, guiCanvas.height);
+  const data = img.data;
+  const w = guiCanvas.width;
+  const target = getPixel(data, x, y, w);
+  const fc = hexToRgb(fillColor);
+  if (target[0]===fc[0] && target[1]===fc[1] && target[2]===fc[2]) return;
+  const stack = [[x, y]];
+  while (stack.length) {
+    const [cx, cy] = stack.pop();
+    if (cx < 0 || cx >= guiCanvas.width || cy < 0 || cy >= guiCanvas.height) continue;
+    const p = getPixel(data, cx, cy, w);
+    if (Math.abs(p[0]-target[0])>10 || Math.abs(p[1]-target[1])>10 || Math.abs(p[2]-target[2])>10) continue;
+    setPixel(data, cx, cy, w, fc);
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+  guiCtx.putImageData(img, 0, 0);
+}
+function getPixel(d, x, y, w) { const i = (y*w+x)*4; return [d[i],d[i+1],d[i+2],d[i+3]]; }
+function setPixel(d, x, y, w, c) { const i = (y*w+x)*4; d[i]=c[0]; d[i+1]=c[1]; d[i+2]=c[2]; d[i+3]=255; }
+function hexToRgb(h) { const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16); return [r,g,b]; }
+
+function clearCanvas() { guiCtx.clearRect(0, 0, guiCanvas.width, guiCanvas.height); }
+function saveCanvas() {
+  const a = document.createElement('a');
+  a.download = 'tubl-art.png'; a.href = guiCanvas.toDataURL(); a.click();
+}
+
+// ─── Input Mode ───
+function selectInput(el, name) {
+  document.querySelectorAll('.input-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('current-input').textContent = el.querySelector('h3').textContent;
+}
+
+// ─── Soundtrack ───
+let audioCtx, currentTrack = -1, oscillators = [];
+const trackNotes = [
+  // Mega Man 6 Title (simplified chiptune)
+  { notes: [262,330,392,523,392,330,262,294,349,440,349,294], tempo: 180, wave: 'square' },
+  // Mr. X Stage
+  { notes: [440,523,587,659,523,440,349,392,440,523,440,392], tempo: 200, wave: 'square' },
+  // Plant Man
+  { notes: [392,440,523,587,659,587,523,440,392,349,330,392], tempo: 160, wave: 'square' },
+  // Flame Man
+  { notes: [523,587,659,784,659,587,523,440,523,587,523,440], tempo: 210, wave: 'sawtooth' },
+  // Knight Man
+  { notes: [330,392,440,523,440,392,330,294,330,392,440,392], tempo: 190, wave: 'square' },
+  // Ending
+  { notes: [262,294,330,349,392,440,494,523,494,440,392,349], tempo: 140, wave: 'triangle' },
+  // Immigrant Song (riff approximation)
+  { notes: [659,659,784,880,784,659,587,659,659,784,880,784], tempo: 160, wave: 'sawtooth' },
+  // Whole Lotta Love
+  { notes: [330,330,392,392,440,440,523,523,440,440,392,392], tempo: 130, wave: 'sawtooth' },
+  // Kashmir
+  { notes: [196,220,247,262,247,220,196,175,196,220,247,220], tempo: 70, wave: 'sawtooth' },
+  // Stairway to Heaven
+  { notes: [330,392,440,523,587,523,440,392,330,294,330,392], tempo: 100, wave: 'triangle' },
+  // Black Dog
+  { notes: [440,523,587,659,587,523,440,392,440,523,587,523], tempo: 150, wave: 'square' },
+  // Tetris Theme (Korobeiniki)
+  { notes: [659,587,523,587,659,784,880,784,659,587,523,440], tempo: 200, wave: 'square' },
+];
+
+function initWaveform() {
+  const wf = document.getElementById('waveform');
+  for (let i = 0; i < 80; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'waveform-bar';
+    bar.style.left = (i * 1.3) + '%';
+    bar.style.height = '2px';
+    wf.appendChild(bar);
+  }
+}
+
+function playTrack(idx) {
+  stopTrack();
+  currentTrack = idx;
+  document.querySelectorAll('.tracklist li').forEach((li, i) => li.classList.toggle('playing', i === idx));
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const track = trackNotes[idx];
+  let noteIdx = 0;
+  const interval = 60000 / track.tempo;
+  const bars = document.querySelectorAll('.waveform-bar');
+
+  function playNote() {
+    if (noteIdx >= track.notes.length * 4) { noteIdx = 0; } // loop
+    const note = track.notes[noteIdx % track.notes.length];
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = track.wave;
+    osc.frequency.value = note;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + interval/1000 * 0.9);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + interval/1000);
+    oscillators.push(osc);
+    // Animate waveform
+    bars.forEach((bar, i) => {
+      bar.style.height = (Math.random() * 50 + 5) + 'px';
+      bar.style.background = i % 2 === 0 ? '#00ff40' : '#0088ff';
+    });
+    noteIdx++;
+    if (currentTrack === idx) {
+      setTimeout(playNote, interval);
+    }
+  }
+  playNote();
+}
+
+function stopTrack() {
+  currentTrack = -1;
+  oscillators.forEach(o => { try { o.stop(); } catch(e) {} });
+  oscillators = [];
+  document.querySelectorAll('.tracklist li').forEach(li => li.classList.remove('playing'));
+  document.querySelectorAll('.waveform-bar').forEach(bar => bar.style.height = '2px');
+}
+
+// ─── Tetris ───
+const TCOLS = 10, TROWS = 20, TSIZE = 25;
+const TSHAPES = [
+  [[1,1,1,1]], // I
+  [[1,1],[1,1]], // O
+  [[0,1,0],[1,1,1]], // T
+  [[1,0,0],[1,1,1]], // L
+  [[0,0,1],[1,1,1]], // J
+  [[0,1,1],[1,1,0]], // S
+  [[1,1,0],[0,1,1]], // Z
+];
+const TCOLORS = ['#00ffff','#ffff00','#aa00ff','#ff8800','#0044ff','#00ff00','#ff0000'];
+let tCanvas, tCtx, nCanvas, nCtx;
+let tBoard, tPiece, tNext, tScore, tGameOver, tInterval;
+
+function initTetris() {
+  tCanvas = document.getElementById('tetris-canvas');
+  tCtx = tCanvas.getContext('2d');
+  nCanvas = document.getElementById('next-canvas');
+  nCtx = nCanvas.getContext('2d');
+  tScore = 0; tGameOver = false;
+  tBoard = Array.from({length: TROWS}, () => Array(TCOLS).fill(0));
+  tNext = newPiece();
+  spawnPiece();
+  if (tInterval) clearInterval(tInterval);
+  tInterval = setInterval(tetrisTick, 500);
+  document.addEventListener('keydown', e => {
+    if (tGameOver) return;
+    if (e.key === 'ArrowLeft') tetrisMove(-1);
+    else if (e.key === 'ArrowRight') tetrisMove(1);
+    else if (e.key === 'ArrowUp') tetrisRotate();
+    else if (e.key === 'ArrowDown') tetrisDrop();
+  });
+}
+
+function newPiece() {
+  const i = Math.floor(Math.random() * TSHAPES.length);
+  return { shape: TSHAPES[i].map(r => [...r]), color: TCOLORS[i], x: 3, y: 0 };
+}
+
+function spawnPiece() {
+  tPiece = tNext;
+  tNext = newPiece();
+  if (!valid(tPiece.shape, tPiece.x, tPiece.y)) tGameOver = true;
+  drawNext();
+}
+
+function valid(shape, px, py) {
+  for (let r = 0; r < shape.length; r++)
+    for (let c = 0; c < shape[r].length; c++)
+      if (shape[r][c]) {
+        const nx = px + c, ny = py + r;
+        if (nx < 0 || nx >= TCOLS || ny >= TROWS) return false;
+        if (ny >= 0 && tBoard[ny][nx]) return false;
+      }
+  return true;
+}
+
+function tetrisMove(dx) {
+  if (tGameOver) return;
+  if (valid(tPiece.shape, tPiece.x + dx, tPiece.y)) tPiece.x += dx;
+}
+
+function tetrisRotate() {
+  if (tGameOver) return;
+  const s = tPiece.shape;
+  const rot = s[0].map((_, i) => s.map(row => row[i]).reverse());
+  if (valid(rot, tPiece.x, tPiece.y)) tPiece.shape = rot;
+}
+
+function tetrisDrop() {
+  if (tGameOver) return;
+  while (valid(tPiece.shape, tPiece.x, tPiece.y + 1)) tPiece.y++;
+  lockPiece();
+}
+
+function lockPiece() {
+  for (let r = 0; r < tPiece.shape.length; r++)
+    for (let c = 0; c < tPiece.shape[r].length; c++)
+      if (tPiece.shape[r][c] && tPiece.y + r >= 0)
+        tBoard[tPiece.y + r][tPiece.x + c] = tPiece.color;
+  clearLines();
+  spawnPiece();
+}
+
+function clearLines() {
+  let cleared = 0;
+  for (let r = TROWS - 1; r >= 0; r--) {
+    if (tBoard[r].every(c => c)) {
+      tBoard.splice(r, 1);
+      tBoard.unshift(Array(TCOLS).fill(0));
+      cleared++; r++;
+    }
+  }
+  tScore += [0, 100, 300, 500, 800][cleared] || 0;
+  document.getElementById('tetris-score').textContent = tScore;
+}
+
+function tetrisTick() {
+  if (tGameOver) return;
+  if (valid(tPiece.shape, tPiece.x, tPiece.y + 1)) {
+    tPiece.y++;
+  } else {
+    lockPiece();
+  }
+  drawTetris();
+}
+
+function drawTetris() {
+  tCtx.fillStyle = '#000';
+  tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
+  // Grid
+  tCtx.strokeStyle = '#1a1a2e';
+  for (let r = 0; r <= TROWS; r++) { tCtx.beginPath(); tCtx.moveTo(0, r*TSIZE); tCtx.lineTo(TCOLS*TSIZE, r*TSIZE); tCtx.stroke(); }
+  for (let c = 0; c <= TCOLS; c++) { tCtx.beginPath(); tCtx.moveTo(c*TSIZE, 0); tCtx.lineTo(c*TSIZE, TROWS*TSIZE); tCtx.stroke(); }
+  // Board
+  for (let r = 0; r < TROWS; r++)
+    for (let c = 0; c < TCOLS; c++)
+      if (tBoard[r][c]) { tCtx.fillStyle = tBoard[r][c]; tCtx.fillRect(c*TSIZE+1, r*TSIZE+1, TSIZE-2, TSIZE-2); }
+  // Current piece
+  if (tPiece) {
+    tCtx.fillStyle = tPiece.color;
+    for (let r = 0; r < tPiece.shape.length; r++)
+      for (let c = 0; c < tPiece.shape[r].length; c++)
+        if (tPiece.shape[r][c])
+          tCtx.fillRect((tPiece.x+c)*TSIZE+1, (tPiece.y+r)*TSIZE+1, TSIZE-2, TSIZE-2);
+  }
+  if (tGameOver) {
+    tCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
+    tCtx.fillStyle = '#ff0040';
+    tCtx.font = 'bold 24px Courier New';
+    tCtx.textAlign = 'center';
+    tCtx.fillText('GAME OVER', tCanvas.width/2, tCanvas.height/2);
+    tCtx.font = '14px Courier New';
+    tCtx.fillStyle = '#888';
+    tCtx.fillText('Score: ' + tScore, tCanvas.width/2, tCanvas.height/2 + 30);
+  }
+}
+
+function drawNext() {
+  nCtx.fillStyle = '#000';
+  nCtx.fillRect(0, 0, nCanvas.width, nCanvas.height);
+  nCtx.fillStyle = tNext.color;
+  const s = tNext.shape;
+  const ox = (4 - s[0].length) * 12;
+  const oy = (4 - s.length) * 12;
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      if (s[r][c]) nCtx.fillRect(ox + c*24 + 1, oy + r*24 + 1, 22, 22);
+}
+
+// ─── Toilet Time ───
+let toiletRunning = false, toiletStart = 0, toiletElapsed = 0, toiletTimer = null;
+const toiletTips = [
+  "💡 The average toilet break lasts 5-7 minutes. Scientists call this 'productive tube time.'",
+  "💡 80% of people bring their phone to the toilet. The other 20% are lying.",
+  "💡 The word 'toilet' comes from the French 'toilette' meaning 'little cloth'. Tube related? Probably.",
+  "💡 Record toilet session: 12 hours. That's some serious tube dedication.",
+  "💡 Legend says the longest Tetris game was played entirely during toilet breaks.",
+  "💡 Tubes were invented in 1825. Coincidence with modern plumbing? We think not.",
+  "💡 The toilet paper roll orientation debate has divided more families than politics.",
+  "💡 This timer runs on tube power. No batteries required.",
+];
+
+function startToilet() {
+  if (toiletRunning) return;
+  toiletRunning = true;
+  toiletStart = Date.now() - toiletElapsed;
+  toiletTimer = setInterval(updateToilet, 1000);
+  document.getElementById('toilet-status').textContent = '🚽 Tube session in progress...';
+  document.getElementById('toilet-tips').textContent = toiletTips[Math.floor(Math.random() * toiletTips.length)];
+}
+
+function stopToilet() {
+  if (!toiletRunning) return;
+  toiletRunning = false;
+  clearInterval(toiletTimer);
+  document.getElementById('toilet-status').textContent = '✅ Session complete. Tubes satisfied.';
+  addToiletLog();
+}
+
+function resetToilet() {
+  toiletRunning = false; toiletElapsed = 0;
+  clearInterval(toiletTimer);
+  document.getElementById('toilet-time').textContent = '00:00';
+  document.getElementById('toilet-status').textContent = 'Ready to tube';
+}
+
+function updateToilet() {
+  toiletElapsed = Date.now() - toiletStart;
+  const s = Math.floor(toiletElapsed / 1000);
+  const m = Math.floor(s / 60);
+  document.getElementById('toilet-time').textContent =
+    String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+}
+
+function addToiletLog() {
+  const s = Math.floor(toiletElapsed / 1000);
+  const m = Math.floor(s / 60);
+  const log = document.getElementById('toilet-log');
+  const p = document.createElement('p');
+  const now = new Date().toLocaleTimeString();
+  p.textContent = `[${now}] Session: ${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')} — ${m >= 10 ? ' marathon' : m >= 5 ? ' solid' : ' quick'} tube session`;
+  log.prepend(p);
+}
+
+// ─── Init ───
+initGUI();
+initWaveform();
+initTetris();
+// Tetris render loop
+function gameLoop() { drawTetris(); requestAnimationFrame(gameLoop); }
+gameLoop();
+</script>
+</body>
+</html>
